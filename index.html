@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Combustible</title>
+<style>
+ body{font-family:sans-serif;margin:0;padding:12px;background:#f2f2f2}
+ h1{font-size:20px;margin:4px 0 12px}
+ .card{background:#fff;border-radius:10px;padding:12px;margin-bottom:12px;box-shadow:0 1px 3px #0002}
+ label{display:block;font-size:13px;margin-top:8px;color:#444}
+ input{width:100%;box-sizing:border-box;padding:10px;font-size:16px;margin-top:3px}
+ button{width:100%;padding:12px;font-size:16px;margin-top:12px;background:#1b6e3c;color:#fff;border:0;border-radius:8px}
+ table{width:100%;border-collapse:collapse;font-size:12px}
+ th,td{padding:6px 4px;border-bottom:1px solid #ddd;text-align:right}
+ th:first-child,td:first-child{text-align:left}
+ .wrap{overflow-x:auto}
+ .del{background:#b3261e;padding:4px 8px;font-size:12px;margin:0;width:auto}
+ .res{font-size:14px;line-height:1.6}
+</style>
+</head>
+<body>
+<h1>⛽ Combustible camioneta</h1>
+
+<div class="card">
+ <label>Fecha</label>
+ <input type="date" id="fecha">
+ <label>Kilometraje</label>
+ <input type="number" id="km" inputmode="numeric" placeholder="Ej: 125430">
+ <label>Litros cargados</label>
+ <input type="number" id="litros" inputmode="decimal" step="0.01" placeholder="Ej: 62.5">
+ <label>Precio por litro ($U)</label>
+ <input type="number" id="precio" inputmode="decimal" step="0.01" placeholder="Ej: 78.50">
+ <label>Tarjeta con la que pagaste</label>
+ <input type="text" id="tarjeta" placeholder="Ej: Visa Itaú">
+ <button onclick="guardar()">Guardar carga</button>
+</div>
+
+<div class="card res" id="resumen"></div>
+
+<div class="card wrap">
+ <table>
+ <thead>
+ <tr><th>Fecha</th><th>Km</th><th>Litros</th><th>$U/L</th><th>Total $U</th><th>Devol. Messi (24%)</th><th>Km rec.</th><th>L/100km</th><th>Tarjeta</th><th></th></tr>
+ </thead>
+ <tbody id="tabla"></tbody>
+ </table>
+</div>
+
+<script>
+var KEY='combustible_registros';
+var datos=JSON.parse(localStorage.getItem(KEY)||'[]');
+document.getElementById('fecha').valueAsDate=new Date();
+
+function fmt(n,d){return Number(n).toLocaleString('es-UY',{minimumFractionDigits:d,maximumFractionDigits:d});}
+
+function guardar(){
+ var fecha=document.getElementById('fecha').value;
+ var km=parseFloat(document.getElementById('km').value);
+ var litros=parseFloat(document.getElementById('litros').value);
+ var precio=parseFloat(document.getElementById('precio').value);
+ var tarjeta=document.getElementById('tarjeta').value.trim();
+ if(!fecha||isNaN(km)||isNaN(litros)||isNaN(precio)){alert('Completá todos los campos');return;}
+ datos.push({fecha:fecha,km:km,litros:litros,precio:precio,tarjeta:tarjeta});
+ datos.sort(function(a,b){return a.km-b.km;});
+ localStorage.setItem(KEY,JSON.stringify(datos));
+ document.getElementById('km').value='';
+ document.getElementById('litros').value='';
+ document.getElementById('precio').value='';
+ mostrar();
+}
+
+function borrar(i){
+ if(confirm('¿Borrar esta carga?')){datos.splice(i,1);localStorage.setItem(KEY,JSON.stringify(datos));mostrar();}
+}
+
+function mostrar(){
+ var html='';
+ var totalGasto=0,totalDevol=0,sumKm=0,sumL=0;
+ for(var i=0;i<datos.length;i++){
+  var d=datos[i];
+  var total=d.litros*d.precio;
+  var devol=total*0.24;
+  totalGasto+=total;totalDevol+=devol;
+  var kmRec='-',cons='-';
+  if(i>0){
+   var r=d.km-datos[i-1].km;
+   if(r>0){
+    kmRec=fmt(r,0);
+    cons=fmt(d.litros/r*100,1);
+    sumKm+=r;sumL+=d.litros;
+   }
+  }
+  html='<tr><td>'+d.fecha+'</td><td>'+fmt(d.km,0)+'</td><td>'+fmt(d.litros,1)+'</td><td>'+fmt(d.precio,2)+'</td><td>'+fmt(total,2)+'</td><td>'+fmt(devol,2)+'</td><td>'+kmRec+'</td><td>'+cons+'</td><td>'+(d.tarjeta||'-')+'</td><td><button class="del" onclick="borrar('+i+')">X</button></td></tr>'+html;
+ }
+ document.getElementById('tabla').innerHTML=html;
+ var prom=sumKm>0?fmt(sumL/sumKm*100,1)+' L/100km':'-';
+ document.getElementById('resumen').innerHTML=
+  '<b>Cargas:</b> '+datos.length+'<br>'+
+  '<b>Gasto total:</b> $U '+fmt(totalGasto,2)+'<br>'+
+  '<b>Devolución Messi (24%):</b> $U '+fmt(totalDevol,2)+'<br>'+
+  '<b>Consumo promedio:</b> '+prom;
+}
+mostrar();
+</script>
+</body>
+</html>
